@@ -24,7 +24,7 @@ body {
   position: absolute;
   top: 0;
   right: 0;
-  width: 400px;
+  width: 520px;
   height: 100vh;
   z-index: 1000;
   background: rgba(15, 23, 42, 0.94);
@@ -44,7 +44,7 @@ body {
 #panel-toggle {
   position: absolute;
   top: 50%;
-  right: 400px;
+  right: 520px;
   transform: translateY(-50%);
   z-index: 1001;
   background: rgba(15, 23, 42, 0.92);
