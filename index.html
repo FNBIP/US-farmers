@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>US Cattle Farmers Map — Real USDA Data</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css" />
+  <link rel="stylesheet" href="styles.css?v=4" />
+</head>
+<body>
+  <div id="map"></div>
+
+  <button id="panel-toggle">&#9654;</button>
+
+  <div id="panel">
+    <div class="panel-header">
+      <h1>US Cattle Farmers</h1>
+      <p>Real USDA data — every county in America</p>
+      <div class="data-source">USDA Census of Agriculture 2022 | Census Bureau Gazetteer 2023</div>
+    </div>
+
+    <!-- Tabs -->
+    <div class="tab-bar">
+      <button class="tab-btn active" data-tab="inventory">Inventory</button>
+      <button class="tab-btn" data-tab="dealers">Dealers</button>
+      <button class="tab-btn" data-tab="historic">Historic</button>
+      <button class="tab-btn" data-tab="markets">Prices</button>
+      <button class="tab-btn" data-tab="auctions">Auctions</button>
+      <button class="tab-btn" data-tab="transport">Flows</button>
+      <button class="tab-btn" data-tab="trends">Trends</button>
+    </div>
+
+    <!-- ===== TAB: Inventory ===== -->
+    <div id="tab-inventory" class="tab-content active">
+      <div class="stats-grid">
+        <div class="stat-card">
+          <div class="label">Counties</div>
+          <div class="value" id="stat-counties">0</div>
+          <div class="sub">with cattle data</div>
+        </div>
+        <div class="stat-card">
+          <div class="label">Cow Inventory</div>
+          <div class="value" id="stat-cows" style="color:#4ade80">0</div>
+          <div class="sub">cows & heifers</div>
+        </div>
+        <div class="stat-card">
+          <div class="label">Cattle Sold</div>
+          <div class="value" id="stat-sold" style="color:#fbbf24">0</div>
+          <div class="sub">cattle & calves</div>
+        </div>
+        <div class="stat-card">
+          <div class="label">Operations</div>
+          <div class="value" id="stat-farms">0</div>
+          <div class="sub">farm operations</div>
+        </div>
+      </div>
+
+      <div class="panel-section">
+        <h3>Filters</h3>
+        <div class="filter-group">
+          <label>State</label>
+          <select id="filter-state">
+            <option value="all">All States</option>
+          </select>
+        </div>
+        <div class="filter-group">
+          <label>County Herd Size (Cow Inventory)</label>
+          <select id="filter-size">
+            <option value="all">All Sizes</option>
+            <option value="small">Small (< 1,000)</option>
+            <option value="medium">Medium (1,000 - 10,000)</option>
+            <option value="large">Large (10,000 - 50,000)</option>
+            <option value="xlarge">Major (50,000+)</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="panel-section">
+        <h3>Cow Inventory by State (click to filter)</h3>
+        <div class="state-list" id="state-list"></div>
+      </div>
+    </div>
+
+    <!-- ===== TAB: Dealers ===== -->
+    <div id="tab-dealers" class="tab-content">
+      <div class="panel-section">
+        <h3>USDA-Registered Livestock Dealers &amp; Market Agencies</h3>
+        <div class="stats-grid">
+          <div class="stat-card">
+            <div class="label">Total Dealers</div>
+            <div class="value" id="stat-dealers">0</div>
+            <div class="sub">registered with USDA</div>
+          </div>
+          <div class="stat-card">
+            <div class="label">States</div>
+            <div class="value" id="stat-dealer-states">0</div>
+            <div class="sub">represented</div>
+          </div>
+        </div>
+        <p style="font-size:11px;color:#94a3b8;margin:0 0 10px 0;">
+          Real names and locations from USDA AMS Packers &amp; Stockyards Division.
+          These are licensed livestock buyers, sellers, and market agents.
+        </p>
+        <button id="toggle-dealers" onclick="toggleDealers()" style="width:100%;padding:8px;border-radius:6px;border:1px solid rgba(255,255,255,0.1);background:rgba(245,158,11,0.2);color:#fbbf24;font-size:12px;font-weight:600;cursor:pointer;margin-bottom:10px;">Show 3,847 Dealers on Map</button>
+        <div class="filter-group">
+          <label>Filter by State</label>
+          <select id="filter-dealer-state" onchange="filterDealerList()">
+            <option value="all">All States</option>
+          </select>
+        </div>
+        <div class="auction-list" id="dealer-list" style="max-height:400px;"></div>
+      </div>
+      <div class="disclaimer">
+        Source: USDA Agricultural Marketing Service, Packers and Stockyards Division.
+        Registered Market Agencies Buying on Commission and Dealers list.
+        Locations geocoded using US Census Bureau city coordinate data.
+      </div>
+    </div>
+
+    <!-- ===== TAB: Historic ===== -->
+    <div id="tab-historic" class="tab-content">
+      <div class="panel-section">
+        <h3>Historic Homesteads, Ranches &amp; Farms</h3>
+        <div class="stats-grid">
+          <div class="stat-card">
+            <div class="label">Homesteads</div>
+            <div class="value" id="stat-homesteads" style="color:#a78bfa">0</div>
+          </div>
+          <div class="stat-card">
+            <div class="label">Ranches</div>
+            <div class="value" id="stat-ranches" style="color:#f472b6">0</div>
+          </div>
+          <div class="stat-card" style="grid-column:span 2">
+            <div class="label">Historic Farms</div>
+            <div class="value" id="stat-hist-farms" style="color:#34d399">0</div>
+          </div>
+        </div>
+        <p style="font-size:11px;color:#94a3b8;margin:0 0 10px 0;">
+          Real properties listed on the National Register of Historic Places.
+          Each has a verified name, address, and GPS coordinates from the National Park Service.
+        </p>
+        <button id="toggle-historic" onclick="toggleHistoric()" style="width:100%;padding:8px;border-radius:6px;border:1px solid rgba(255,255,255,0.1);background:rgba(167,139,250,0.2);color:#a78bfa;font-size:12px;font-weight:600;cursor:pointer;margin-bottom:10px;">Show on Map</button>
+        <div class="filter-group">
+          <label>Category</label>
+          <select id="filter-historic-cat" onchange="filterHistoricList()">
+            <option value="all">All</option>
+            <option value="homestead">Homesteads</option>
+            <option value="ranch">Ranches</option>
+            <option value="farm">Farms</option>
+          </select>
+        </div>
+        <div class="auction-list" id="historic-list" style="max-height:400px;"></div>
+      </div>
+      <div class="disclaimer">
+        Source: National Park Service, National Register of Historic Places.
+        These are real, documented historic properties with verified names and locations.
+        Coordinates from NPS NRHP Map Service.
+      </div>
+    </div>
+
+    <!-- ===== TAB: Live Prices ===== -->
+    <div id="tab-markets" class="tab-content">
+      <div class="panel-section">
+        <h3>Weekly 5-Area Weighted Average</h3>
+        <div class="market-data" id="market-data">
+          <div class="loading-text">Loading USDA market data...</div>
+        </div>
+      </div>
+      <div class="panel-section">
+        <h3>Daily Direct Slaughter</h3>
+        <div class="market-data" id="daily-slaughter-data">
+          <div class="loading-text">Loading...</div>
+        </div>
+      </div>
+      <div class="disclaimer">
+        All price data is sourced directly from the USDA Agricultural Marketing Service
+        Livestock Mandatory Reporting (LMR) Datamart API in real-time. Prices are in $/cwt
+        (dollars per hundred pounds). Data updates Mon-Fri during market hours.
+      </div>
+    </div>
+
+    <!-- ===== TAB: Auctions ===== -->
+    <div id="tab-auctions" class="tab-content">
+      <div class="panel-section">
+        <h3>USDA-Reported Livestock Auction Markets</h3>
+        <p style="font-size:12px;color:#94a3b8;margin-bottom:10px;">
+          Real auction houses that conduct regular livestock sales.
+          Green border = sale day matches today.
+        </p>
+        <button id="toggle-auctions" onclick="toggleAuctions()" style="width:100%;padding:8px;border-radius:6px;border:1px solid rgba(255,255,255,0.1);background:rgba(59,130,246,0.2);color:#60a5fa;font-size:12px;font-weight:600;cursor:pointer;margin-bottom:10px;">Show on Map</button>
+        <div class="auction-list" id="auction-list"></div>
+        <div id="auction-detail" style="display:none;"></div>
+      </div>
+      <div class="disclaimer">
+        Auction market locations are from USDA AMS Feeder &amp; Replacement Cattle Auction reports.
+        Live bidding data is proprietary to each auction house and is not publicly available via API.
+        Sale schedules are approximate and may change — verify with the auction house directly.
+      </div>
+    </div>
+
+    <!-- ===== TAB: News/Trends & Stock Market ===== -->
+    <div id="tab-trends" class="tab-content">
+      <div class="panel-section">
+        <h3>Agricultural Stocks</h3>
+        <div id="trends-stocks" class="stock-grid"></div>
+      </div>
+      <div class="panel-section">
+        <h3>Commodity Prices</h3>
+        <div id="trends-commodities"></div>
+      </div>
+      <div class="panel-section">
+        <h3>Production Regions</h3>
+        <p style="font-size:11px;color:#94a3b8;margin-bottom:8px;">
+          Toggle map markers for top US production states by commodity.
+        </p>
+        <div class="region-toggle-group">
+          <button class="region-toggle-btn" onclick="toggleProductionRegions('dairy')" id="region-btn-dairy">
+            <span class="region-icon">🧀</span> Dairy States
+          </button>
+          <button class="region-toggle-btn" onclick="toggleProductionRegions('eggs')" id="region-btn-eggs">
+            <span class="region-icon">🥚</span> Egg States
+          </button>
+          <button class="region-toggle-btn" onclick="toggleProductionRegions('poultry')" id="region-btn-poultry">
+            <span class="region-icon">🍗</span> Poultry States
+          </button>
+        </div>
+      </div>
+      <div class="panel-section">
+        <h3>USDA Market Reports</h3>
+        <div id="trends-news" class="news-list"></div>
+      </div>
+      <div class="disclaimer" id="trends-disclaimer">
+        Data sources: USDA AMS MPR Datamart (dairy/beef/pork prices), Yahoo Finance (stock quotes),
+        USDA NASS (production regions). Stock prices are delayed. Run fetch_trends.py to refresh data.
+      </div>
+    </div>
+
+    <!-- ===== TAB: Purchasing Flows ===== -->
+    <div id="tab-transport" class="tab-content">
+      <div class="panel-section">
+        <h3>Cattle Purchasing Flows</h3>
+        <div class="route-info">
+          Where do feedlots buy their cattle? These arrows show the major
+          interstate cattle purchasing flows, derived from real USDA Census 2022 data.
+          States that sell far more cattle than they raise (ratio &gt; 2×) are net
+          importers — they buy feeder calves from cow-calf states.
+        </div>
+        <div class="stats-grid" style="padding:0 0 10px 0;">
+          <div class="stat-card">
+            <div class="label">Purchase Flows</div>
+            <div class="value" style="color:#f59e0b" id="stat-purchase-flows">0</div>
+            <div class="sub">cow-calf → feedlot</div>
+          </div>
+          <div class="stat-card">
+            <div class="label">Slaughter Flows</div>
+            <div class="value" style="color:#ef4444" id="stat-slaughter-flows">0</div>
+            <div class="sub">feedlot → packing</div>
+          </div>
+        </div>
+        <button id="toggle-trucks" onclick="toggleTrucks()" style="width:100%;padding:8px;border-radius:6px;border:1px solid rgba(255,255,255,0.1);background:rgba(59,130,246,0.2);color:#60a5fa;font-size:12px;font-weight:600;cursor:pointer;margin-bottom:12px;">Show Purchasing Flows</button>
+
+        <div class="route-legend">
+          <div class="route-legend-item">
+            <div class="route-line-sample" style="background:#f59e0b"></div>
+            <span>Cow-Calf → Feedlot (purchases)</span>
+          </div>
+          <div class="route-legend-item">
+            <div class="route-line-sample" style="background:#ef4444"></div>
+            <span>Feedlot → Packing Plant (slaughter)</span>
+          </div>
+        </div>
+
+        <h3 style="margin-top:14px;">Top Net Buyer States</h3>
+        <div class="route-info" id="net-buyer-list" style="margin-bottom:0;">
+          Loading...
+        </div>
+      </div>
+      <div class="disclaimer">
+        Cattle purchasing flows are derived from the USDA Census of Agriculture 2022.
+        The ratio of cattleSold ÷ cowInventory identifies net buyer states (ratio &gt; 2×
+        means the state processes far more cattle than it raises, importing from other states).
+        Head counts are estimates based on Census totals and known industry patterns.
+        Real-time livestock truck GPS tracking does not exist publicly.
+      </div>
+    </div>
+  </div>
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
+  <script src="data.js?v=3"></script>
+  <script src="dealers.js?v=3"></script>
+  <script src="historic.js?v=3"></script>
+  <script src="trends.js?v=3"></script>
+  <script src="app.js?v=4"></script>
+</body>
+</html>

@@ -1,0 +1,15 @@
+# Source data files (not needed to run the app)
+census_atlas.xlsx
+2023_Gaz_counties_national.txt
+counties_gaz.zip
+dealers.pdf
+fsis_est.csv
+homesteads.json
+organic_data.zip
+psp_registrants.xlsx
+us_cities.csv
+zipcodes_coords.csv
+zipgeo.csv
+
+# Internal
+.claude/
