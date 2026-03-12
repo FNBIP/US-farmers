@@ -7,7 +7,7 @@
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css" />
   <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css" />
-  <link rel="stylesheet" href="styles.css?v=4" />
+  <link rel="stylesheet" href="styles.css?v=5" />
 </head>
 <body>
   <div id="map"></div>
@@ -30,6 +30,7 @@
       <button class="tab-btn" data-tab="auctions">Auctions</button>
       <button class="tab-btn" data-tab="transport">Flows</button>
       <button class="tab-btn" data-tab="trends">Trends</button>
+      <button class="tab-btn" data-tab="forsale">For Sale</button>
     </div>
 
     <!-- ===== TAB: Inventory ===== -->
@@ -237,6 +238,59 @@
       </div>
     </div>
 
+    <!-- ===== TAB: For Sale ===== -->
+    <div id="tab-forsale" class="tab-content">
+      <div class="panel-section">
+        <h3>Farms, Ranches &amp; Homesteads For Sale</h3>
+        <div class="stats-grid">
+          <div class="stat-card">
+            <div class="label">Listings</div>
+            <div class="value" id="stat-listings">0</div>
+            <div class="sub">properties</div>
+          </div>
+          <div class="stat-card">
+            <div class="label">States</div>
+            <div class="value" id="stat-listing-states">0</div>
+            <div class="sub">covered</div>
+          </div>
+        </div>
+        <p style="font-size:11px;color:#94a3b8;margin:0 0 10px 0;">
+          Real property listings from Redfin. Click any listing to fly to its location on the map.
+        </p>
+        <button id="toggle-listings" onclick="toggleListings()" style="width:100%;padding:8px;border-radius:6px;border:1px solid rgba(255,255,255,0.1);background:rgba(16,185,129,0.2);color:#34d399;font-size:12px;font-weight:600;cursor:pointer;margin-bottom:10px;">Show All on Map</button>
+        <div class="filter-group">
+          <label>Category</label>
+          <select id="filter-listing-cat" onchange="filterListings()">
+            <option value="all">All Types</option>
+            <option value="farm">Farms</option>
+            <option value="ranch">Ranches</option>
+            <option value="homestead">Homesteads</option>
+          </select>
+        </div>
+        <div class="filter-group">
+          <label>State</label>
+          <select id="filter-listing-state" onchange="filterListings()">
+            <option value="all">All States</option>
+          </select>
+        </div>
+        <div class="filter-group">
+          <label>Price Range</label>
+          <select id="filter-listing-price" onchange="filterListings()">
+            <option value="all">Any Price</option>
+            <option value="under100k">Under $100K</option>
+            <option value="100k-500k">$100K - $500K</option>
+            <option value="500k-1m">$500K - $1M</option>
+            <option value="over1m">Over $1M</option>
+          </select>
+        </div>
+        <div class="auction-list" id="listing-list" style="max-height:400px;"></div>
+      </div>
+      <div class="disclaimer">
+        Source: Redfin public property listings. Prices and availability may change.
+        Run fetch_listings.py to refresh data.
+      </div>
+    </div>
+
     <!-- ===== TAB: Purchasing Flows ===== -->
     <div id="tab-transport" class="tab-content">
       <div class="panel-section">
@@ -293,6 +347,7 @@
   <script src="dealers.js?v=3"></script>
   <script src="historic.js?v=3"></script>
   <script src="trends.js?v=3"></script>
-  <script src="app.js?v=4"></script>
+  <script src="listings.js?v=3"></script>
+  <script src="app.js?v=5"></script>
 </body>
 </html>

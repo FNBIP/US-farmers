@@ -969,6 +969,179 @@ function toggleProductionRegions(category) {
   }
 }
 
+// ===== FOR SALE LISTINGS =====
+
+const LISTING_ICONS = {
+  farm: { emoji: "\uD83C\uDF3E", bg: "#16a34a" },
+  ranch: { emoji: "\uD83D\uDC04", bg: "#d97706" },
+  homestead: { emoji: "\uD83C\uDFE1", bg: "#7c3aed" },
+};
+
+let listingMarkersOnMap = [];
+let listingsVisible = false;
+let selectedListingIndex = -1;
+const listingCluster = L.markerClusterGroup({
+  maxClusterRadius: 50,
+  iconCreateFunction: function (cluster) {
+    return L.divIcon({
+      html: '<div style="background:rgba(16,185,129,0.7);color:#fff;font-weight:700;border-radius:50%;width:36px;height:36px;display:flex;align-items:center;justify-content:center;font-size:11px;border:2px solid rgba(255,255,255,0.3);">' + cluster.getChildCount() + '</div>',
+      className: '',
+      iconSize: [36, 36],
+    });
+  },
+});
+
+function toggleListings() {
+  if (typeof LISTINGS_DATA === "undefined") return;
+  listingsVisible = !listingsVisible;
+  const btn = document.getElementById("toggle-listings");
+  btn.textContent = listingsVisible ? "Hide Listings" : "Show All on Map";
+
+  if (listingsVisible) {
+    showListingsOnMap(LISTINGS_DATA.listings);
+  } else {
+    map.removeLayer(listingCluster);
+    listingCluster.clearLayers();
+    listingMarkersOnMap = [];
+  }
+}
+
+function showListingsOnMap(listings) {
+  listingCluster.clearLayers();
+  listingMarkersOnMap = [];
+
+  listings.forEach((l, i) => {
+    const iconInfo = LISTING_ICONS[l.category] || LISTING_ICONS.farm;
+    const icon = L.divIcon({
+      html: `<div class="listing-marker" style="width:26px;height:26px;background:${iconInfo.bg};">${iconInfo.emoji}</div>`,
+      className: "",
+      iconSize: [26, 26],
+      iconAnchor: [13, 13],
+    });
+
+    const m = L.marker([l.lat, l.lng], { icon: icon });
+    m.bindPopup(
+      `<div class="popup-title">$${l.price.toLocaleString()}</div>
+       <div class="popup-location">${l.address ? l.address + "<br>" : ""}${l.city}, ${l.state} ${l.zip}</div>
+       <div class="popup-stats" style="grid-template-columns:1fr 1fr;">
+         <div class="popup-stat"><div class="num">${l.acres || "N/A"}</div><div class="lbl">Acres</div></div>
+         <div class="popup-stat"><div class="num">${l.beds || 0}/${l.baths || 0}</div><div class="lbl">Beds/Baths</div></div>
+       </div>
+       <div style="display:inline-block;padding:2px 8px;border-radius:10px;font-size:10px;font-weight:600;text-transform:uppercase;margin-top:4px;" class="listing-badge listing-badge-${l.category}">${l.category}</div>
+       ${l.url ? '<div style="margin-top:6px;"><a href="' + l.url + '" target="_blank" style="color:#60a5fa;font-size:11px;">View on Redfin &rarr;</a></div>' : ''}
+       <div class="popup-source">Source: ${l.source}</div>`,
+      { maxWidth: 260 }
+    );
+    m.listingIndex = i;
+    listingCluster.addLayer(m);
+    listingMarkersOnMap.push(m);
+  });
+
+  map.addLayer(listingCluster);
+}
+
+function selectListing(index) {
+  if (typeof LISTINGS_DATA === "undefined") return;
+  const filtered = getFilteredListings();
+  const l = filtered[index];
+  if (!l) return;
+  selectedListingIndex = index;
+
+  // Show on map if not visible
+  if (!listingsVisible) {
+    toggleListings();
+  }
+
+  // Fly to listing
+  map.flyTo([l.lat, l.lng], 12, { duration: 1.2 });
+
+  // Open matching popup
+  setTimeout(() => {
+    listingMarkersOnMap.forEach((m) => {
+      if (m.getLatLng().lat.toFixed(4) === l.lat.toFixed(4) &&
+          m.getLatLng().lng.toFixed(4) === l.lng.toFixed(4)) {
+        listingCluster.zoomToShowLayer(m, () => m.openPopup());
+      }
+    });
+  }, 1400);
+
+  // Update selected card highlight
+  document.querySelectorAll(".listing-card").forEach((c, i) => {
+    c.classList.toggle("selected", i === index);
+  });
+}
+
+function getFilteredListings() {
+  if (typeof LISTINGS_DATA === "undefined") return [];
+  const cat = document.getElementById("filter-listing-cat").value;
+  const state = document.getElementById("filter-listing-state").value;
+  const price = document.getElementById("filter-listing-price").value;
+
+  return LISTINGS_DATA.listings.filter((l) => {
+    if (cat !== "all" && l.category !== cat) return false;
+    if (state !== "all" && l.state !== state) return false;
+    if (price === "under100k" && l.price >= 100000) return false;
+    if (price === "100k-500k" && (l.price < 100000 || l.price >= 500000)) return false;
+    if (price === "500k-1m" && (l.price < 500000 || l.price >= 1000000)) return false;
+    if (price === "over1m" && l.price < 1000000) return false;
+    return true;
+  });
+}
+
+function filterListings() {
+  const filtered = getFilteredListings();
+  renderListingCards(filtered);
+
+  // Update map markers to match filter
+  if (listingsVisible) {
+    showListingsOnMap(filtered);
+  }
+}
+
+function renderListingCards(listings) {
+  const list = document.getElementById("listing-list");
+  const shown = listings.slice(0, 200);
+  list.innerHTML = shown.map((l, i) => {
+    const iconInfo = LISTING_ICONS[l.category] || LISTING_ICONS.farm;
+    return `
+      <div class="listing-card" onclick="selectListing(${i})" id="listing-card-${i}">
+        <div class="listing-top">
+          <div class="listing-price">$${l.price.toLocaleString()}</div>
+          <span class="listing-badge listing-badge-${l.category}">${iconInfo.emoji} ${l.category}</span>
+        </div>
+        <div class="listing-address">${l.address || "Land/Property"}</div>
+        <div class="listing-loc">${l.city}, ${l.state} ${l.zip}</div>
+        <div class="listing-details">
+          ${l.acres ? `<span>\uD83D\uDCCF ${l.acres} acres</span>` : ""}
+          ${l.beds ? `<span>\uD83D\uDECF ${l.beds} bed</span>` : ""}
+          ${l.baths ? `<span>\uD83D\uDEC1 ${l.baths} bath</span>` : ""}
+        </div>
+      </div>`;
+  }).join("") + (listings.length > 200 ? `<div style="text-align:center;color:#64748b;font-size:11px;padding:8px;">Showing 200 of ${listings.length} — use filters or map</div>` : "");
+}
+
+function initListingsTab() {
+  if (typeof LISTINGS_DATA === "undefined") return;
+  const listings = LISTINGS_DATA.listings;
+
+  // Stats
+  document.getElementById("stat-listings").textContent = fmt(listings.length);
+  const states = [...new Set(listings.map((l) => l.state))].sort();
+  document.getElementById("stat-listing-states").textContent = states.length;
+
+  // Populate state filter
+  const sel = document.getElementById("filter-listing-state");
+  states.forEach((st) => {
+    const opt = document.createElement("option");
+    opt.value = st;
+    opt.textContent = st;
+    sel.appendChild(opt);
+  });
+
+  // Render initial list
+  renderListingCards(listings);
+}
+
 // ===== Init Flow Stats =====
 function renderFlowStats() {
   const purchaseFlows = CATTLE_FLOWS.flows.filter((f) => f.type === "purchase");
@@ -1001,6 +1174,7 @@ renderHistoricStats();
 filterHistoricList();
 renderFlowStats();
 renderTrendsData();
+initListingsTab();
 
 // Expose toggle functions
 window.toggleTrucks = toggleTrucks;
@@ -1011,3 +1185,6 @@ window.toggleHistoric = toggleHistoric;
 window.filterDealerList = filterDealerList;
 window.filterHistoricList = filterHistoricList;
 window.toggleProductionRegions = toggleProductionRegions;
+window.toggleListings = toggleListings;
+window.selectListing = selectListing;
+window.filterListings = filterListings;
